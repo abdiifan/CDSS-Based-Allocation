@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PharmaAlloc — Pharmaceutical Inventory Allocation System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Sidebar Navigation -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <rect width="28" height="28" rx="8" fill="var(--accent)"/>
+          <path d="M7 14h4l3-6 4 12 3-6h3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <span class="logo-text">PharmaAlloc</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="#" class="nav-item active" data-tab="dashboard">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 6a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1H4a1 1 0 01-1-1v-5zm10 0a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1h-2a1 1 0 01-1-1v-5z"/></svg>
+        Dashboard
+      </a>
+      <a href="#" class="nav-item" data-tab="data-input">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"/></svg>
+        Data Input
+      </a>
+      <a href="#" class="nav-item" data-tab="allocation">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/></svg>
+        Allocation Report
+      </a>
+      <a href="#" class="nav-item" data-tab="materials">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM14 11a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1h-1a1 1 0 110-2h1v-1a1 1 0 011-1z"/></svg>
+        Materials
+      </a>
+    </nav>
+    <div class="sidebar-bottom">
+      <button class="theme-toggle" id="themeToggle" title="Toggle dark mode">
+        <svg class="icon-sun" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/></svg>
+        <svg class="icon-moon" viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+        <span>Dark Mode</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <!-- Header -->
+    <header class="top-header">
+      <div class="header-left">
+        <button class="menu-toggle" id="menuToggle">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>
+        </button>
+        <div class="header-title-group">
+          <h1 id="pageTitle">Dashboard</h1>
+          <p id="pageSubtitle">Consolidated inventory overview</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="report-meta">
+          <input type="text" id="facilityName" placeholder="Facility / Branch Name" class="meta-input" />
+          <input type="month" id="reportingPeriod" class="meta-input" />
+        </div>
+        <button class="btn btn-primary" id="exportBtn">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+          Export
+        </button>
+        <div class="export-dropdown" id="exportDropdown">
+          <button onclick="exportAsCSV()">CSV</button>
+          <button onclick="exportAsExcel()">Excel (.xlsx)</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- TAB: Dashboard -->
+    <section class="tab-content active" id="tab-dashboard">
+      <div class="kpi-grid" id="kpiGrid">
+        <div class="kpi-card">
+          <div class="kpi-label">Total Items Tracked</div>
+          <div class="kpi-value" id="kpi-total">0</div>
+          <div class="kpi-sub">material codes</div>
+        </div>
+        <div class="kpi-card kpi-danger">
+          <div class="kpi-label">Critical Shortages</div>
+          <div class="kpi-value" id="kpi-critical">0</div>
+          <div class="kpi-sub">zero branch stock</div>
+        </div>
+        <div class="kpi-card kpi-warn">
+          <div class="kpi-label">Items with Shortage</div>
+          <div class="kpi-value" id="kpi-shortage">0</div>
+          <div class="kpi-sub">partial / rationed</div>
+        </div>
+        <div class="kpi-card kpi-info">
+          <div class="kpi-label">Overstock (Central)</div>
+          <div class="kpi-value" id="kpi-overstock">0</div>
+          <div class="kpi-sub">MOS &gt; 9 months</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Total Forecast Qty</div>
+          <div class="kpi-value" id="kpi-forecast">0</div>
+          <div class="kpi-sub">units demanded</div>
+        </div>
+        <div class="kpi-card kpi-success">
+          <div class="kpi-label">Total Recommended</div>
+          <div class="kpi-value" id="kpi-allocation">0</div>
+          <div class="kpi-sub">units to allocate</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Avg Allocation %</div>
+          <div class="kpi-value" id="kpi-avgpct">0%</div>
+          <div class="kpi-sub">demand coverage</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Total Central SOH</div>
+          <div class="kpi-value" id="kpi-centralsoh">0</div>
+          <div class="kpi-sub">units available</div>
+        </div>
+      </div>
+
+      <div class="charts-row">
+        <div class="chart-card">
+          <div class="card-header">
+            <h3>Allocation Status Breakdown</h3>
+          </div>
+          <div class="chart-wrap" style="max-width:320px;margin:0 auto;">
+            <canvas id="statusChart"></canvas>
+          </div>
+        </div>
+        <div class="chart-card chart-card-wide">
+          <div class="card-header">
+            <h3>Top 10 Urgent Items — Remaining Need</h3>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="urgentChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="tables-row">
+        <div class="table-card">
+          <div class="card-header">
+            <h3>🚨 Top 10 Urgent Items</h3>
+            <span class="badge badge-danger">High Priority</span>
+          </div>
+          <div class="table-scroll">
+            <table class="data-table" id="urgentTable">
+              <thead>
+                <tr>
+                  <th>Code</th><th>Description</th><th>Type</th>
+                  <th>Branch SOH</th><th>Central SOH</th>
+                  <th>Forecast</th><th>Remaining Need</th>
+                  <th>Rec. Allocation</th><th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="urgentTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="tables-row">
+        <div class="table-card">
+          <div class="card-header">
+            <h3>📦 Top 10 Overstocked Items</h3>
+            <span class="badge badge-warn">Central MOS &gt; 9</span>
+          </div>
+          <div class="table-scroll">
+            <table class="data-table" id="overstockTable">
+              <thead>
+                <tr>
+                  <th>Code</th><th>Description</th><th>Type</th>
+                  <th>Central SOH</th><th>AMC</th><th>MOS (Central)</th>
+                  <th>Forecast Qty</th><th>Overstock Flag</th>
+                </tr>
+              </thead>
+              <tbody id="overstockTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: Data Input -->
+    <section class="tab-content" id="tab-data-input">
+      <div class="data-input-grid">
+
+        <!-- Branch CDSS -->
+        <div class="input-card" id="card-branch">
+          <div class="card-header">
+            <div>
+              <h3>🏥 Branch CDSS</h3>
+              <p class="card-desc">Branch stock and demand data</p>
+            </div>
+            <div class="input-status" id="status-branch">
+              <span class="dot dot-empty"></span> No data
+            </div>
+          </div>
+          <div class="upload-zone" id="zone-branch" data-target="branch">
+            <svg viewBox="0 0 48 48" fill="none"><path d="M24 8v24M14 18l10-10 10 10" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 36h32" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+            <p>Drop CSV file here or <label class="upload-link">browse<input type="file" accept=".csv,.xlsx" class="file-input" id="file-branch" /></label></p>
+            <span>CSV or Excel · Columns: Material Code, Description, Stock on Hand, Material Type Code, AMC, MOS, Forecast Qty, Delivered Qty</span>
+          </div>
+          <div class="paste-area">
+            <label>Or paste CSV data directly:</label>
+            <textarea id="paste-branch" placeholder="Material Code,Description,Stock on Hand,Material Type Code,AMC,MOS,Forecast Qty,Delivered Qty&#10;MAT001,Paracetamol 500mg Tab,1200,ZME,300,4,500,200&#10;MAT002,Amoxicillin 250mg Cap,0,ZME,150,0,300,0" rows="5"></textarea>
+            <button class="btn btn-sm btn-outline" onclick="parsePaste('branch')">Load Pasted Data</button>
+          </div>
+          <div class="data-preview" id="preview-branch"></div>
+        </div>
+
+        <!-- Central Warehouse -->
+        <div class="input-card" id="card-central">
+          <div class="card-header">
+            <div>
+              <h3>🏭 Central Warehouse</h3>
+              <p class="card-desc">Central stock levels and AMC</p>
+            </div>
+            <div class="input-status" id="status-central">
+              <span class="dot dot-empty"></span> No data
+            </div>
+          </div>
+          <div class="upload-zone" id="zone-central" data-target="central">
+            <svg viewBox="0 0 48 48" fill="none"><path d="M24 8v24M14 18l10-10 10 10" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 36h32" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+            <p>Drop CSV file here or <label class="upload-link">browse<input type="file" accept=".csv,.xlsx" class="file-input" id="file-central" /></label></p>
+            <span>CSV or Excel · Same 8-column format</span>
+          </div>
+          <div class="paste-area">
+            <label>Or paste CSV data directly:</label>
+            <textarea id="paste-central" placeholder="Material Code,Description,Stock on Hand,Material Type Code,AMC,MOS,Forecast Qty,Delivered Qty&#10;MAT001,Paracetamol 500mg Tab,5000,ZME,300,16.7,500,200" rows="5"></textarea>
+            <button class="btn btn-sm btn-outline" onclick="parsePaste('central')">Load Pasted Data</button>
+          </div>
+          <div class="data-preview" id="preview-central"></div>
+        </div>
+
+        <!-- National Branches -->
+        <div class="input-card" id="card-national">
+          <div class="card-header">
+            <div>
+              <h3>🌐 National Branches</h3>
+              <p class="card-desc">Aggregated national branch data</p>
+            </div>
+            <div class="input-status" id="status-national">
+              <span class="dot dot-empty"></span> No data
+            </div>
+          </div>
+          <div class="upload-zone" id="zone-national" data-target="national">
+            <svg viewBox="0 0 48 48" fill="none"><path d="M24 8v24M14 18l10-10 10 10" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 36h32" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+            <p>Drop CSV file here or <label class="upload-link">browse<input type="file" accept=".csv,.xlsx" class="file-input" id="file-national" /></label></p>
+            <span>CSV or Excel · Same 8-column format</span>
+          </div>
+          <div class="paste-area">
+            <label>Or paste CSV data directly:</label>
+            <textarea id="paste-national" placeholder="Material Code,Description,Stock on Hand,Material Type Code,AMC,MOS,Forecast Qty,Delivered Qty&#10;MAT001,Paracetamol 500mg Tab,8000,ZME,300,26.7,1500,600" rows="5"></textarea>
+            <button class="btn btn-sm btn-outline" onclick="parsePaste('national')">Load Pasted Data</button>
+          </div>
+          <div class="data-preview" id="preview-national"></div>
+        </div>
+
+      </div>
+
+      <div class="action-bar">
+        <button class="btn btn-lg btn-primary" id="calcBtn" onclick="runAllCalculations()">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
+          Calculate Allocation Report
+        </button>
+        <button class="btn btn-outline" onclick="loadSampleData()">Load Sample Data</button>
+        <button class="btn btn-outline btn-danger" onclick="clearAllData()">Clear All</button>
+      </div>
+    </section>
+
+    <!-- TAB: Allocation Report -->
+    <section class="tab-content" id="tab-allocation">
+      <div class="filters-bar">
+        <div class="search-box">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+          <input type="text" id="searchInput" placeholder="Search material code or description…" oninput="filterTable()" />
+        </div>
+        <select id="filterStatus" onchange="filterTable()">
+          <option value="">All Statuses</option>
+          <option value="Critical Shortage">Critical Shortage</option>
+          <option value="Rationed">Rationed</option>
+          <option value="Partial">Partial</option>
+          <option value="Full">Full</option>
+          <option value="No Need">No Need</option>
+        </select>
+        <select id="filterType" onchange="filterTable()">
+          <option value="">All Types</option>
+          <option value="ZME">ZME</option>
+          <option value="ZMS">ZMS</option>
+        </select>
+        <select id="filterOverstock" onchange="filterTable()">
+          <option value="">All Overstock Flags</option>
+          <option value="OVERSTOCK">OVERSTOCK</option>
+          <option value="OK">OK</option>
+        </select>
+        <span class="filter-count" id="filterCount">0 items</span>
+      </div>
+
+      <div class="table-card" style="margin-top:0">
+        <div class="table-scroll">
+          <table class="data-table allocation-table" id="allocationTable">
+            <thead>
+              <tr>
+                <th class="sortable" data-col="materialCode" onclick="sortTable('materialCode')">Material Code <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="description" onclick="sortTable('description')">Description <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="materialType" onclick="sortTable('materialType')">Type <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="branchSOH" onclick="sortTable('branchSOH')">Branch SOH <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="centralSOH" onclick="sortTable('centralSOH')">Central SOH <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="nationalSOH" onclick="sortTable('nationalSOH')">National SOH <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="amc" onclick="sortTable('amc')">AMC <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="mosCentral" onclick="sortTable('mosCentral')">MOS Central <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="branchForecast" onclick="sortTable('branchForecast')">Forecast Qty <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="deliveredQty" onclick="sortTable('deliveredQty')">Delivered Qty <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="branchRemainingNeed" onclick="sortTable('branchRemainingNeed')">Branch Remaining Need <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="nationalRemainingNeed" onclick="sortTable('nationalRemainingNeed')">National Remaining Need <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="recommendedAllocation" onclick="sortTable('recommendedAllocation')">Rec. Allocation <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="allocationPct" onclick="sortTable('allocationPct')">Alloc % <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="allocationStatus" onclick="sortTable('allocationStatus')">Status <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="overstockFlag" onclick="sortTable('overstockFlag')">Overstock Flag <span class="sort-icon">↕</span></th>
+                <th>Comments</th>
+                <th class="sortable" data-col="suggestedRedistribution" onclick="sortTable('suggestedRedistribution')">Suggested Redistribution <span class="sort-icon">↕</span></th>
+              </tr>
+            </thead>
+            <tbody id="allocationTbody">
+              <tr>
+                <td colspan="18" class="empty-state">
+                  <div class="empty-icon">📋</div>
+                  <p>No allocation data yet.</p>
+                  <p>Go to <strong>Data Input</strong> to load your source data.</p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: Materials -->
+    <section class="tab-content" id="tab-materials">
+      <div class="materials-layout">
+        <div class="materials-editor">
+          <div class="card-header">
+            <h3>Material Codes</h3>
+            <button class="btn btn-sm btn-primary" onclick="addMaterialRow()">+ Add Row</button>
+          </div>
+          <p class="card-desc" style="margin-bottom:1rem;">Enter the material codes you want to track. These drive the Allocation Report lookups.</p>
+          <div class="table-scroll">
+            <table class="data-table" id="materialTable">
+              <thead><tr><th>#</th><th>Material Code</th><th>Notes</th><th></th></tr></thead>
+              <tbody id="materialTbody">
+                <tr class="material-row" data-idx="0">
+                  <td>1</td>
+                  <td><input type="text" class="mat-code-input" placeholder="e.g. MAT001" /></td>
+                  <td><input type="text" class="mat-note-input" placeholder="Optional note" /></td>
+                  <td><button class="btn-icon btn-danger-icon" onclick="removeMaterialRow(this)">×</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="action-bar" style="padding:0;margin-top:1rem;">
+            <button class="btn btn-primary" onclick="applyMaterialCodes()">Apply & Recalculate</button>
+            <button class="btn btn-outline" onclick="importMaterialCodesFromData()">Auto-detect from Data</button>
+            <button class="btn btn-outline" onclick="clearMaterialCodes()">Clear All</button>
+          </div>
+
+          <div class="paste-area" style="margin-top:1.5rem;">
+            <label>Or paste a list of material codes (one per line):</label>
+            <textarea id="pasteMaterials" placeholder="MAT001&#10;MAT002&#10;MAT003" rows="5"></textarea>
+            <button class="btn btn-sm btn-outline" onclick="parseMaterialPaste()">Load Codes</button>
+          </div>
+        </div>
+
+        <div class="materials-info">
+          <div class="info-card">
+            <h4>📌 How It Works</h4>
+            <ul>
+              <li>Add material codes you want to track in the Allocation Report</li>
+              <li>PharmaAlloc looks up each code across all three source sheets</li>
+              <li>Missing codes show blank rows (no error)</li>
+              <li>Use <strong>Auto-detect</strong> to populate from uploaded data</li>
+            </ul>
+          </div>
+          <div class="info-card">
+            <h4>📋 Column Reference</h4>
+            <table class="ref-table">
+              <tr><td>Material Code</td><td>Primary lookup key</td></tr>
+              <tr><td>Description</td><td>From Branch CDSS col 2</td></tr>
+              <tr><td>Material Type</td><td>From Branch CDSS col 4 (ZME/ZMS)</td></tr>
+              <tr><td>Branch SOH</td><td>Branch CDSS col 3</td></tr>
+              <tr><td>Central SOH</td><td>Central Warehouse col 3</td></tr>
+              <tr><td>National SOH</td><td>National Branches col 3</td></tr>
+              <tr><td>AMC</td><td>Central Warehouse col 5</td></tr>
+              <tr><td>MOS Central</td><td>= Central SOH / AMC</td></tr>
+              <tr><td>Branch Forecast</td><td>Branch CDSS col 7</td></tr>
+              <tr><td>Delivered Qty</td><td>Branch CDSS col 8</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
