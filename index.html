@@ -1274,11 +1274,11 @@
           <div class="upload-zone" id="zone-branch" data-target="branch">
             <svg viewBox="0 0 48 48" fill="none"><path d="M24 8v24M14 18l10-10 10 10" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 36h32" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
             <p>Drop CSV file here or <label class="upload-link">browse<input type="file" accept=".csv,.xlsx" class="file-input" id="file-branch" /></label></p>
-            <span>CSV or Excel · Columns: Material Code, Description, Stock on Hand, Material Type Code, AMC, MOS, Forecast Qty, Delivered Qty</span>
+            <span>CSV or Excel · Columns: Material Code, Description, Material Type Code, Stock on Hand, AMC, MOS, Forecast Qty, Delivered Qty (+ 4 auto-calc columns optional)</span>
           </div>
           <div class="paste-area">
             <label>Or paste CSV data directly:</label>
-            <textarea id="paste-branch" placeholder="Material Code,Description,Stock on Hand,Material Type Code,AMC,MOS,Forecast Qty,Delivered Qty&#10;MAT001,Paracetamol 500mg Tab,1200,ZME,300,4,500,200&#10;MAT002,Amoxicillin 250mg Cap,0,ZME,150,0,300,0" rows="5"></textarea>
+            <textarea id="paste-branch" placeholder="Material Code,Description,Material Type Code,Stock on Hand,AMC,MOS,Forecast Qty,Delivered Qty&#10;MAT001,Paracetamol 500mg Tab,ZME,1200,300,4,500,200&#10;MAT002,Amoxicillin 250mg Cap,ZME,0,150,0,300,0" rows="5"></textarea>
             <button class="btn btn-sm btn-outline" onclick="parsePaste('branch')">Load Pasted Data</button>
           </div>
           <div class="data-preview" id="preview-branch"></div>
@@ -1302,7 +1302,7 @@
           </div>
           <div class="paste-area">
             <label>Or paste CSV data directly:</label>
-            <textarea id="paste-central" placeholder="Material Code,Description,Stock on Hand,Material Type Code,AMC,MOS,Forecast Qty,Delivered Qty&#10;MAT001,Paracetamol 500mg Tab,5000,ZME,300,16.7,500,200" rows="5"></textarea>
+            <textarea id="paste-central" placeholder="Material Code,Description,Material Type Code,Stock on Hand,AMC,MOS,Forecast Qty,Delivered Qty&#10;MAT001,Paracetamol 500mg Tab,ZME,5000,300,16.7,500,200" rows="5"></textarea>
             <button class="btn btn-sm btn-outline" onclick="parsePaste('central')">Load Pasted Data</button>
           </div>
           <div class="data-preview" id="preview-central"></div>
@@ -1326,7 +1326,7 @@
           </div>
           <div class="paste-area">
             <label>Or paste CSV data directly:</label>
-            <textarea id="paste-national" placeholder="Material Code,Description,Stock on Hand,Material Type Code,AMC,MOS,Forecast Qty,Delivered Qty&#10;MAT001,Paracetamol 500mg Tab,8000,ZME,300,26.7,1500,600" rows="5"></textarea>
+            <textarea id="paste-national" placeholder="Material Code,Description,Material Type Code,Stock on Hand,AMC,MOS,Forecast Qty,Delivered Qty&#10;MAT001,Paracetamol 500mg Tab,ZME,8000,300,26.7,1500,600" rows="5"></textarea>
             <button class="btn btn-sm btn-outline" onclick="parsePaste('national')">Load Pasted Data</button>
           </div>
           <div class="data-preview" id="preview-national"></div>
@@ -1387,6 +1387,10 @@
                 <th class="sortable" data-col="mosCentral" onclick="sortTable('mosCentral')">MOS Central <span class="sort-icon">↕</span></th>
                 <th class="sortable" data-col="branchForecast" onclick="sortTable('branchForecast')">Forecast Qty <span class="sort-icon">↕</span></th>
                 <th class="sortable" data-col="deliveredQty" onclick="sortTable('deliveredQty')">Delivered Qty <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="fillRateQtyPct" onclick="sortTable('fillRateQtyPct')">Fill Rate Qty % <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="branchForecastValue" onclick="sortTable('branchForecastValue')">Forecast Value <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="branchDeliveredValue" onclick="sortTable('branchDeliveredValue')">Delivered Value <span class="sort-icon">↕</span></th>
+                <th class="sortable" data-col="fillRateValuePct" onclick="sortTable('fillRateValuePct')">Fill Rate Value % <span class="sort-icon">↕</span></th>
                 <th class="sortable" data-col="branchRemainingNeed" onclick="sortTable('branchRemainingNeed')">Branch Remaining Need <span class="sort-icon">↕</span></th>
                 <th class="sortable" data-col="nationalRemainingNeed" onclick="sortTable('nationalRemainingNeed')">National Remaining Need <span class="sort-icon">↕</span></th>
                 <th class="sortable" data-col="recommendedAllocation" onclick="sortTable('recommendedAllocation')">Rec. Allocation <span class="sort-icon">↕</span></th>
@@ -1399,7 +1403,7 @@
             </thead>
             <tbody id="allocationTbody">
               <tr>
-                <td colspan="18" class="empty-state">
+                <td colspan="22" class="empty-state">
                   <div class="empty-icon">📋</div>
                   <p>No allocation data yet.</p>
                   <p>Go to <strong>Data Input</strong> to load your source data.</p>
@@ -1459,16 +1463,20 @@
           <div class="info-card">
             <h4>📋 Column Reference</h4>
             <table class="ref-table">
-              <tr><td>Material Code</td><td>Primary lookup key</td></tr>
-              <tr><td>Description</td><td>From Branch CDSS col 2</td></tr>
-              <tr><td>Material Type</td><td>From Branch CDSS col 4 (ZME/ZMS)</td></tr>
-              <tr><td>Branch SOH</td><td>Branch CDSS col 3</td></tr>
-              <tr><td>Central SOH</td><td>Central Warehouse col 3</td></tr>
-              <tr><td>National SOH</td><td>National Branches col 3</td></tr>
-              <tr><td>AMC</td><td>Central Warehouse col 5</td></tr>
+              <tr><td>Material Code</td><td>Col 1 — Primary lookup key</td></tr>
+              <tr><td>Description</td><td>Col 2 — From Branch CDSS</td></tr>
+              <tr><td>Material Type</td><td>Col 3 — Branch CDSS (ZME/ZMS)</td></tr>
+              <tr><td>Branch SOH</td><td>Col 4 — Branch CDSS</td></tr>
+              <tr><td>Central SOH</td><td>Col 4 — Central Warehouse</td></tr>
+              <tr><td>National SOH</td><td>Col 4 — National Branches</td></tr>
+              <tr><td>AMC</td><td>Col 5 — Central Warehouse</td></tr>
               <tr><td>MOS Central</td><td>= Central SOH / AMC</td></tr>
-              <tr><td>Branch Forecast</td><td>Branch CDSS col 7</td></tr>
-              <tr><td>Delivered Qty</td><td>Branch CDSS col 8</td></tr>
+              <tr><td>Branch Forecast</td><td>Col 7 — Branch CDSS</td></tr>
+              <tr><td>Delivered Qty</td><td>Col 8 — Branch CDSS</td></tr>
+              <tr><td>Fill Rate Qty %</td><td>Col 9 — Auto-calc (Delivered/Forecast)</td></tr>
+              <tr><td>Forecast Value</td><td>Col 10 — Branch CDSS</td></tr>
+              <tr><td>Delivered Value</td><td>Col 11 — Branch CDSS</td></tr>
+              <tr><td>Fill Rate Value %</td><td>Col 12 — Auto-calc (Del.Val/Fore.Val)</td></tr>
             </table>
           </div>
         </div>
