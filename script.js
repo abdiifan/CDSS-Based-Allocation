@@ -17,15 +17,20 @@ const state = {
 };
 
 // ─── Constants ──────────────────────────────────────────────
+// New 12-column format: Code | Description | Material Type | SOH | AMC | MOS | Forecast | Delivered | Fill Rate Qty% | Forecast Value | Delivered Value | Fill Rate Value%
 const COLS = {
-  MATERIAL_CODE: 0,  // col 1
-  DESCRIPTION: 1,    // col 2
-  STOCK_ON_HAND: 2,  // col 3
-  MATERIAL_TYPE: 3,  // col 4
-  AMC: 4,            // col 5
-  MOS: 5,            // col 6
-  FORECAST_QTY: 6,   // col 7
-  DELIVERED_QTY: 7   // col 8
+  MATERIAL_CODE: 0,    // col 1 — Material Code
+  DESCRIPTION: 1,      // col 2 — Description
+  MATERIAL_TYPE: 2,    // col 3 — Material Type Code
+  STOCK_ON_HAND: 3,    // col 4 — Stock on Hand
+  AMC: 4,              // col 5 — AMC
+  MOS: 5,              // col 6 — MOS
+  FORECAST_QTY: 6,     // col 7 — Forecast Qty
+  DELIVERED_QTY: 7,    // col 8 — Delivered Qty
+  FILL_RATE_QTY: 8,    // col 9 — Fill Rate Qty % (auto-calc)
+  FORECAST_VALUE: 9,   // col 10 — Forecast Value
+  DELIVERED_VALUE: 10, // col 11 — Delivered Value
+  FILL_RATE_VALUE: 11  // col 12 — Fill Rate Value % (auto-calc)
 };
 
 // ─── Init ────────────────────────────────────────────────────
@@ -220,7 +225,9 @@ function vlookup(code, index, colIdx) {
 
 function toNum(v) {
   if (v === null || v === undefined || v === '') return null;
-  const n = parseFloat(v);
+  // Strip commas (e.g. "1,994,020.00") and % signs before parsing
+  const cleaned = String(v).replace(/,/g, '').replace(/%$/, '').trim();
+  const n = parseFloat(cleaned);
   return isNaN(n) ? null : n;
 }
 
@@ -234,20 +241,28 @@ function calcRow(matCode, branchIdx, centralIdx, nationalIdx) {
   // B: Description — from Branch CDSS col 2
   const description = vlookup(code, branchIdx, COLS.DESCRIPTION) || '';
 
-  // C: Material Type — from Branch CDSS col 4
+  // C: Material Type — from Branch CDSS col 3 (updated)
   const materialType = vlookup(code, branchIdx, COLS.MATERIAL_TYPE) || '';
 
-  // D: Branch SOH — from Branch CDSS col 3
+  // D: Branch SOH — from Branch CDSS col 4 (updated)
   const branchSOH = toNum(vlookup(code, branchIdx, COLS.STOCK_ON_HAND));
 
-  // E: Central SOH — from Central Warehouse col 3
+  // E: Central SOH — from Central Warehouse col 4 (updated)
   const centralSOH = toNum(vlookup(code, centralIdx, COLS.STOCK_ON_HAND));
 
-  // F: National SOH — from National Branches col 3
+  // F: National SOH — from National Branches col 4 (updated)
   const nationalSOH = toNum(vlookup(code, nationalIdx, COLS.STOCK_ON_HAND));
 
   // G: AMC — from Central Warehouse col 5
   const amc = toNum(vlookup(code, centralIdx, COLS.AMC));
+
+  // NEW: Branch value & fill-rate columns (cols 9-12)
+  const branchForecastValue  = toNum(vlookup(code, branchIdx, COLS.FORECAST_VALUE));
+  const branchDeliveredValue = toNum(vlookup(code, branchIdx, COLS.DELIVERED_VALUE));
+  // Fill Rate Qty % = Delivered Qty / Forecast Qty (mirrors Excel =IFERROR(H/G,""))
+  // Fill Rate Value % = Delivered Value / Forecast Value
+  let fillRateQtyPct = null;
+  let fillRateValuePct = null;
 
   // H: MOS Central = ROUND(E/G, 1)
   let mosCentral = null;
@@ -355,6 +370,14 @@ function calcRow(matCode, branchIdx, centralIdx, nationalIdx) {
     }
   }
 
+  // Compute fill rates now that branchForecast & deliveredQty are available
+  if (branchForecast !== null && branchForecast !== 0 && deliveredQty !== null) {
+    fillRateQtyPct = deliveredQty / branchForecast;
+  }
+  if (branchForecastValue !== null && branchForecastValue !== 0 && branchDeliveredValue !== null) {
+    fillRateValuePct = branchDeliveredValue / branchForecastValue;
+  }
+
   return {
     materialCode: code,
     description,
@@ -366,6 +389,10 @@ function calcRow(matCode, branchIdx, centralIdx, nationalIdx) {
     mosCentral,
     branchForecast,
     deliveredQty,
+    fillRateQtyPct,
+    branchForecastValue,
+    branchDeliveredValue,
+    fillRateValuePct,
     branchRemainingNeed,
     nationalRemainingNeed,
     recommendedAllocation,
@@ -622,7 +649,7 @@ function sortTable(col) {
 function drawAllocationTbody(data) {
   const tbody = document.getElementById('allocationTbody');
   if (!data.length) {
-    tbody.innerHTML = `<tr><td colspan="18" class="empty-state"><div class="empty-icon">🔍</div><p>No matching records found.</p></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="22" class="empty-state"><div class="empty-icon">🔍</div><p>No matching records found.</p></td></tr>`;
     return;
   }
   tbody.innerHTML = data.map(r => `
@@ -637,6 +664,10 @@ function drawAllocationTbody(data) {
       <td class="num">${r.mosCentral !== null ? r.mosCentral.toFixed(1) : '—'}</td>
       <td class="num">${fmt(r.branchForecast)}</td>
       <td class="num">${fmt(r.deliveredQty)}</td>
+      <td class="num">${r.fillRateQtyPct !== null ? (r.fillRateQtyPct * 100).toFixed(1) + '%' : '—'}</td>
+      <td class="num">${fmt(r.branchForecastValue)}</td>
+      <td class="num">${fmt(r.branchDeliveredValue)}</td>
+      <td class="num">${r.fillRateValuePct !== null ? (r.fillRateValuePct * 100).toFixed(1) + '%' : '—'}</td>
       <td class="num ${r.branchRemainingNeed > 0 ? 'text-danger' : ''}">${fmt(r.branchRemainingNeed)}</td>
       <td class="num">${fmt(r.nationalRemainingNeed)}</td>
       <td class="num"><strong>${fmt(r.recommendedAllocation)}</strong></td>
@@ -733,59 +764,60 @@ function parseMaterialPaste() {
 
 // ─── Sample Data ──────────────────────────────────────────────
 function loadSampleData() {
+  // New 12-column format: Code|Description|MatType|SOH|AMC|MOS|ForecastQty|DeliveredQty|FillRateQty%|ForecastValue|DeliveredValue|FillRateValue%
   const sampleBranch = [
-    ['Material Code','Description','Stock on Hand','Material Type Code','AMC','MOS','Forecast Qty','Delivered Qty'],
-    ['MAT001','Paracetamol 500mg Tablets','1200','ZME','300','4','500','200'],
-    ['MAT002','Amoxicillin 250mg Capsules','0','ZME','150','0','300','0'],
-    ['MAT003','Metformin 500mg Tablets','450','ZME','180','2.5','400','100'],
-    ['MAT004','Atorvastatin 20mg Tablets','800','ZME','120','6.7','200','80'],
-    ['MAT005','Omeprazole 20mg Capsules','50','ZME','200','0.25','350','20'],
-    ['MAT006','Amlodipine 5mg Tablets','0','ZME','100','0','150','0'],
-    ['MAT007','Metronidazole 400mg Tablets','300','ZMS','90','3.3','180','60'],
-    ['MAT008','Ciprofloxacin 500mg Tablets','750','ZME','250','3','300','100'],
-    ['MAT009','Ibuprofen 400mg Tablets','100','ZME','400','0.25','600','50'],
-    ['MAT010','Furosemide 40mg Tablets','200','ZME','80','2.5','120','40'],
-    ['MAT011','Salbutamol 100mcg Inhaler','60','ZMS','30','2','80','10'],
-    ['MAT012','Prednisolone 5mg Tablets','900','ZME','60','15','100','50'],
-    ['MAT013','Doxycycline 100mg Capsules','0','ZME','70','0','100','0'],
-    ['MAT014','Chloroquine 250mg Tablets','1500','ZMS','200','7.5','400','200'],
-    ['MAT015','Co-trimoxazole 480mg Tablets','250','ZME','350','0.71','500','0'],
+    ['Material Code','Description','Material Type Code','Stock on Hand','AMC','MOS','Forecast Qty','Delivered Qty','Fill Rate Qty %','Forecast Value','Delivered Value','Fill Rate Value %'],
+    ['MAT001','Paracetamol 500mg Tablets','ZME','1200','300','4','500','200','','25000','10000',''],
+    ['MAT002','Amoxicillin 250mg Capsules','ZME','0','150','0','300','0','','15000','0',''],
+    ['MAT003','Metformin 500mg Tablets','ZME','450','180','2.5','400','100','','20000','5000',''],
+    ['MAT004','Atorvastatin 20mg Tablets','ZME','800','120','6.7','200','80','','10000','4000',''],
+    ['MAT005','Omeprazole 20mg Capsules','ZME','50','200','0.25','350','20','','17500','1000',''],
+    ['MAT006','Amlodipine 5mg Tablets','ZME','0','100','0','150','0','','7500','0',''],
+    ['MAT007','Metronidazole 400mg Tablets','ZMS','300','90','3.3','180','60','','9000','3000',''],
+    ['MAT008','Ciprofloxacin 500mg Tablets','ZME','750','250','3','300','100','','15000','5000',''],
+    ['MAT009','Ibuprofen 400mg Tablets','ZME','100','400','0.25','600','50','','30000','2500',''],
+    ['MAT010','Furosemide 40mg Tablets','ZME','200','80','2.5','120','40','','6000','2000',''],
+    ['MAT011','Salbutamol 100mcg Inhaler','ZMS','60','30','2','80','10','','4000','500',''],
+    ['MAT012','Prednisolone 5mg Tablets','ZME','900','60','15','100','50','','5000','2500',''],
+    ['MAT013','Doxycycline 100mg Capsules','ZME','0','70','0','100','0','','5000','0',''],
+    ['MAT014','Chloroquine 250mg Tablets','ZMS','1500','200','7.5','400','200','','20000','10000',''],
+    ['MAT015','Co-trimoxazole 480mg Tablets','ZME','250','350','0.71','500','0','','25000','0',''],
   ];
   const sampleCentral = [
-    ['Material Code','Description','Stock on Hand','Material Type Code','AMC','MOS','Forecast Qty','Delivered Qty'],
-    ['MAT001','Paracetamol 500mg Tablets','8500','ZME','300','28.3','1500','600'],
-    ['MAT002','Amoxicillin 250mg Capsules','1200','ZME','150','8','900','300'],
-    ['MAT003','Metformin 500mg Tablets','4000','ZME','180','22.2','1200','400'],
-    ['MAT004','Atorvastatin 20mg Tablets','600','ZME','120','5','600','200'],
-    ['MAT005','Omeprazole 20mg Capsules','3500','ZME','200','17.5','1050','200'],
-    ['MAT006','Amlodipine 5mg Tablets','800','ZME','100','8','450','100'],
-    ['MAT007','Metronidazole 400mg Tablets','500','ZMS','90','5.6','540','180'],
-    ['MAT008','Ciprofloxacin 500mg Tablets','2000','ZME','250','8','900','300'],
-    ['MAT009','Ibuprofen 400mg Tablets','1500','ZME','400','3.75','1800','150'],
-    ['MAT010','Furosemide 40mg Tablets','400','ZME','80','5','360','120'],
-    ['MAT011','Salbutamol 100mcg Inhaler','600','ZMS','30','20','240','30'],
-    ['MAT012','Prednisolone 5mg Tablets','7200','ZME','60','120','300','150'],
-    ['MAT013','Doxycycline 100mg Capsules','500','ZME','70','7.1','300','0'],
-    ['MAT014','Chloroquine 250mg Tablets','15000','ZMS','200','75','1200','600'],
-    ['MAT015','Co-trimoxazole 480mg Tablets','1000','ZME','350','2.86','1500','0'],
+    ['Material Code','Description','Material Type Code','Stock on Hand','AMC','MOS','Forecast Qty','Delivered Qty','Fill Rate Qty %','Forecast Value','Delivered Value','Fill Rate Value %'],
+    ['MAT001','Paracetamol 500mg Tablets','ZME','8500','300','28.3','1500','600','','75000','30000',''],
+    ['MAT002','Amoxicillin 250mg Capsules','ZME','1200','150','8','900','300','','45000','15000',''],
+    ['MAT003','Metformin 500mg Tablets','ZME','4000','180','22.2','1200','400','','60000','20000',''],
+    ['MAT004','Atorvastatin 20mg Tablets','ZME','600','120','5','600','200','','30000','10000',''],
+    ['MAT005','Omeprazole 20mg Capsules','ZME','3500','200','17.5','1050','200','','52500','10000',''],
+    ['MAT006','Amlodipine 5mg Tablets','ZME','800','100','8','450','100','','22500','5000',''],
+    ['MAT007','Metronidazole 400mg Tablets','ZMS','500','90','5.6','540','180','','27000','9000',''],
+    ['MAT008','Ciprofloxacin 500mg Tablets','ZME','2000','250','8','900','300','','45000','15000',''],
+    ['MAT009','Ibuprofen 400mg Tablets','ZME','1500','400','3.75','1800','150','','90000','7500',''],
+    ['MAT010','Furosemide 40mg Tablets','ZME','400','80','5','360','120','','18000','6000',''],
+    ['MAT011','Salbutamol 100mcg Inhaler','ZMS','600','30','20','240','30','','12000','1500',''],
+    ['MAT012','Prednisolone 5mg Tablets','ZME','7200','60','120','300','150','','15000','7500',''],
+    ['MAT013','Doxycycline 100mg Capsules','ZME','500','70','7.1','300','0','','15000','0',''],
+    ['MAT014','Chloroquine 250mg Tablets','ZMS','15000','200','75','1200','600','','60000','30000',''],
+    ['MAT015','Co-trimoxazole 480mg Tablets','ZME','1000','350','2.86','1500','0','','75000','0',''],
   ];
   const sampleNational = [
-    ['Material Code','Description','Stock on Hand','Material Type Code','AMC','MOS','Forecast Qty','Delivered Qty'],
-    ['MAT001','Paracetamol 500mg Tablets','25000','ZME','300','83.3','4500','1800'],
-    ['MAT002','Amoxicillin 250mg Capsules','3600','ZME','150','24','2700','900'],
-    ['MAT003','Metformin 500mg Tablets','12000','ZME','180','66.7','3600','1200'],
-    ['MAT004','Atorvastatin 20mg Tablets','1800','ZME','120','15','1800','600'],
-    ['MAT005','Omeprazole 20mg Capsules','10500','ZME','200','52.5','3150','600'],
-    ['MAT006','Amlodipine 5mg Tablets','2400','ZME','100','24','1350','300'],
-    ['MAT007','Metronidazole 400mg Tablets','1500','ZMS','90','16.7','1620','540'],
-    ['MAT008','Ciprofloxacin 500mg Tablets','6000','ZME','250','24','2700','900'],
-    ['MAT009','Ibuprofen 400mg Tablets','4500','ZME','400','11.25','5400','450'],
-    ['MAT010','Furosemide 40mg Tablets','1200','ZME','80','15','1080','360'],
-    ['MAT011','Salbutamol 100mcg Inhaler','1800','ZMS','30','60','720','90'],
-    ['MAT012','Prednisolone 5mg Tablets','21600','ZME','60','360','900','450'],
-    ['MAT013','Doxycycline 100mg Capsules','1500','ZME','70','21.4','900','0'],
-    ['MAT014','Chloroquine 250mg Tablets','45000','ZMS','200','225','3600','1800'],
-    ['MAT015','Co-trimoxazole 480mg Tablets','3000','ZME','350','8.57','4500','0'],
+    ['Material Code','Description','Material Type Code','Stock on Hand','AMC','MOS','Forecast Qty','Delivered Qty','Fill Rate Qty %','Forecast Value','Delivered Value','Fill Rate Value %'],
+    ['MAT001','Paracetamol 500mg Tablets','ZME','25000','300','83.3','4500','1800','','225000','90000',''],
+    ['MAT002','Amoxicillin 250mg Capsules','ZME','3600','150','24','2700','900','','135000','45000',''],
+    ['MAT003','Metformin 500mg Tablets','ZME','12000','180','66.7','3600','1200','','180000','60000',''],
+    ['MAT004','Atorvastatin 20mg Tablets','ZME','1800','120','15','1800','600','','90000','30000',''],
+    ['MAT005','Omeprazole 20mg Capsules','ZME','10500','200','52.5','3150','600','','157500','30000',''],
+    ['MAT006','Amlodipine 5mg Tablets','ZME','2400','100','24','1350','300','','67500','15000',''],
+    ['MAT007','Metronidazole 400mg Tablets','ZMS','1500','90','16.7','1620','540','','81000','27000',''],
+    ['MAT008','Ciprofloxacin 500mg Tablets','ZME','6000','250','24','2700','900','','135000','45000',''],
+    ['MAT009','Ibuprofen 400mg Tablets','ZME','4500','400','11.25','5400','450','','270000','22500',''],
+    ['MAT010','Furosemide 40mg Tablets','ZME','1200','80','15','1080','360','','54000','18000',''],
+    ['MAT011','Salbutamol 100mcg Inhaler','ZMS','1800','30','60','720','90','','36000','4500',''],
+    ['MAT012','Prednisolone 5mg Tablets','ZME','21600','60','360','900','450','','45000','22500',''],
+    ['MAT013','Doxycycline 100mg Capsules','ZME','1500','70','21.4','900','0','','45000','0',''],
+    ['MAT014','Chloroquine 250mg Tablets','ZMS','45000','200','225','3600','1800','','180000','90000',''],
+    ['MAT015','Co-trimoxazole 480mg Tablets','ZME','3000','350','8.57','4500','0','','225000','0',''],
   ];
 
   state.branch = sampleBranch.slice(1);
@@ -831,14 +863,18 @@ function exportAsCSV() {
   if (!state.filteredData.length) { showToast('No data to export', 'warn'); return; }
   const headers = [
     'Material Code','Description','Material Type','Branch SOH','Central SOH','National SOH',
-    'AMC','MOS Central','Branch Forecast Qty','Delivered Qty','Branch Remaining Need',
-    'National Remaining Need','Recommended Allocation','Allocation %','Allocation Status',
-    'Overstock Flag (Central)','Comments','Suggested Redistribution'
+    'AMC','MOS Central','Branch Forecast Qty','Delivered Qty','Fill Rate Qty %',
+    'Forecast Value','Delivered Value','Fill Rate Value %',
+    'Branch Remaining Need','National Remaining Need','Recommended Allocation','Allocation %',
+    'Allocation Status','Overstock Flag (Central)','Comments','Suggested Redistribution'
   ];
   const rows = state.filteredData.map(r => [
     r.materialCode, r.description, r.materialType,
     r.branchSOH, r.centralSOH, r.nationalSOH,
     r.amc, r.mosCentral, r.branchForecast, r.deliveredQty,
+    r.fillRateQtyPct !== null ? (r.fillRateQtyPct*100).toFixed(2)+'%' : '',
+    r.branchForecastValue, r.branchDeliveredValue,
+    r.fillRateValuePct !== null ? (r.fillRateValuePct*100).toFixed(2)+'%' : '',
     r.branchRemainingNeed, r.nationalRemainingNeed,
     r.recommendedAllocation,
     r.allocationPct !== null ? (r.allocationPct*100).toFixed(2)+'%' : '',
@@ -853,14 +889,18 @@ function exportAsExcel() {
   if (!state.filteredData.length) { showToast('No data to export', 'warn'); return; }
   const headers = [
     'Material Code','Description','Material Type','Branch SOH','Central SOH','National SOH',
-    'AMC','MOS Central','Branch Forecast Qty','Delivered Qty','Branch Remaining Need',
-    'National Remaining Need','Recommended Allocation','Allocation %','Allocation Status',
-    'Overstock Flag','Comments','Suggested Redistribution'
+    'AMC','MOS Central','Branch Forecast Qty','Delivered Qty','Fill Rate Qty %',
+    'Forecast Value','Delivered Value','Fill Rate Value %',
+    'Branch Remaining Need','National Remaining Need','Recommended Allocation','Allocation %',
+    'Allocation Status','Overstock Flag','Comments','Suggested Redistribution'
   ];
   const rows = state.filteredData.map(r => [
     r.materialCode, r.description, r.materialType,
     r.branchSOH ?? '', r.centralSOH ?? '', r.nationalSOH ?? '',
     r.amc ?? '', r.mosCentral ?? '', r.branchForecast ?? '', r.deliveredQty ?? '',
+    r.fillRateQtyPct !== null ? r.fillRateQtyPct : '',
+    r.branchForecastValue ?? '', r.branchDeliveredValue ?? '',
+    r.fillRateValuePct !== null ? r.fillRateValuePct : '',
     r.branchRemainingNeed ?? '', r.nationalRemainingNeed ?? '',
     r.recommendedAllocation ?? '',
     r.allocationPct !== null ? r.allocationPct : '',
@@ -870,7 +910,7 @@ function exportAsExcel() {
   const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
 
   // Column widths
-  ws['!cols'] = [14,28,8,10,10,10,8,10,12,12,18,20,18,10,16,14,40,20].map(w => ({wch:w}));
+  ws['!cols'] = [14,28,8,10,10,10,8,10,12,12,10,14,14,12,18,20,18,10,16,14,40,20].map(w => ({wch:w}));
 
   // Freeze top row
   ws['!freeze'] = { xSplit: 0, ySplit: 1 };
