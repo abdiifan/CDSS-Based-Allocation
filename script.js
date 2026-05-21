@@ -41,9 +41,26 @@ document.addEventListener('DOMContentLoaded', () => {
   setupFileInputs();
   setupExportDropdown();
   setupMenuToggle();
+  setupDashTypeFilter();
   initCharts();
   loadSavedState();
 });
+
+// ─── Dashboard Type Filter ────────────────────────────────────
+let dashTypeActive = '';
+
+function setupDashTypeFilter() {
+  document.querySelectorAll('.dash-type-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      dashTypeActive = btn.dataset.type;
+      document.querySelectorAll('.dash-type-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      if (state.allocationData.length) {
+        updateDashboard(state.allocationData);
+      }
+    });
+  });
+}
 
 // ─── Navigation ──────────────────────────────────────────────
 function setupNavigation() {
@@ -437,15 +454,30 @@ function runAllCalculations() {
 
 // ─── Dashboard ───────────────────────────────────────────────
 function updateDashboard(data) {
-  const total = data.length;
-  const critical = data.filter(r => r.allocationStatus === 'Critical Shortage').length;
-  const shortage = data.filter(r => r.allocationStatus === 'Partial' || r.allocationStatus === 'Rationed').length;
-  const overstock = data.filter(r => r.overstockFlag === 'OVERSTOCK').length;
-  const totalForecast = data.reduce((s, r) => s + (r.branchForecast || 0), 0);
-  const totalAlloc = data.reduce((s, r) => s + (r.recommendedAllocation || 0), 0);
-  const pcts = data.filter(r => r.allocationPct !== null && r.allocationPct > 0).map(r => r.allocationPct);
+  // Apply dashboard type filter
+  const filtered = dashTypeActive
+    ? data.filter(r => String(r.materialType || '').toUpperCase() === dashTypeActive)
+    : data;
+
+  // Update filter count badge
+  const countEl = document.getElementById('dashFilterCount');
+  if (countEl) {
+    if (dashTypeActive) {
+      countEl.textContent = `${filtered.length} of ${data.length} items`;
+    } else {
+      countEl.textContent = `${data.length} items total`;
+    }
+  }
+
+  const total = filtered.length;
+  const critical = filtered.filter(r => r.allocationStatus === 'Critical Shortage').length;
+  const shortage = filtered.filter(r => r.allocationStatus === 'Partial' || r.allocationStatus === 'Rationed').length;
+  const overstock = filtered.filter(r => r.overstockFlag === 'OVERSTOCK').length;
+  const totalForecast = filtered.reduce((s, r) => s + (r.branchForecast || 0), 0);
+  const totalAlloc = filtered.reduce((s, r) => s + (r.recommendedAllocation || 0), 0);
+  const pcts = filtered.filter(r => r.allocationPct !== null && r.allocationPct > 0).map(r => r.allocationPct);
   const avgPct = pcts.length ? pcts.reduce((a, b) => a + b, 0) / pcts.length : 0;
-  const totalCentralSOH = data.reduce((s, r) => s + (r.centralSOH || 0), 0);
+  const totalCentralSOH = filtered.reduce((s, r) => s + (r.centralSOH || 0), 0);
 
   document.getElementById('kpi-total').textContent = total.toLocaleString();
   document.getElementById('kpi-critical').textContent = critical.toLocaleString();
@@ -456,10 +488,10 @@ function updateDashboard(data) {
   document.getElementById('kpi-avgpct').textContent = (avgPct * 100).toFixed(1) + '%';
   document.getElementById('kpi-centralsoh').textContent = totalCentralSOH.toLocaleString();
 
-  updateStatusChart(data);
-  updateUrgentChart(data);
-  renderUrgentTable(data);
-  renderOverstockTable(data);
+  updateStatusChart(filtered);
+  updateUrgentChart(filtered);
+  renderUrgentTable(filtered);
+  renderOverstockTable(filtered);
 }
 
 // ─── Charts ──────────────────────────────────────────────────
