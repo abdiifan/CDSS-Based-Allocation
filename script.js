@@ -635,37 +635,6 @@ function renderAllocationTable(data) {
   applyFilters();
 }
 
-function applyFilters() {
-  let data = [...state.allocationData];
-  const search = document.getElementById('searchInput').value.toLowerCase();
-  const fStatus = document.getElementById('filterStatus').value;
-  const fType = document.getElementById('filterType').value;
-  const fOverstock = document.getElementById('filterOverstock').value;
-
-  if (search) {
-    data = data.filter(r =>
-      r.materialCode.toLowerCase().includes(search) ||
-      r.description.toLowerCase().includes(search)
-    );
-  }
-  if (fStatus) data = data.filter(r => r.allocationStatus === fStatus);
-  if (fType) data = data.filter(r => r.materialType === fType);
-  if (fOverstock) data = data.filter(r => r.overstockFlag === fOverstock);
-
-  if (state.sortCol) {
-    data.sort((a, b) => {
-      const va = a[state.sortCol] ?? '';
-      const vb = b[state.sortCol] ?? '';
-      if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * state.sortDir;
-      return String(va).localeCompare(String(vb)) * state.sortDir;
-    });
-  }
-
-  state.filteredData = data;
-  document.getElementById('filterCount').textContent = `${data.length} items`;
-  drawAllocationTbody(data);
-}
-
 function filterTable() { applyFilters(); }
 
 function clearFilters() {
@@ -717,6 +686,8 @@ function applyFilters() {
   document.getElementById('filterCount').textContent = `${data.length} item${data.length !== 1 ? 's' : ''}`;
   drawAllocationTbody(data);
 }
+
+function sortTable(col) {
   if (state.sortCol === col) {
     state.sortDir *= -1;
   } else {
