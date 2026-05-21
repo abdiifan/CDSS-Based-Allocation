@@ -561,7 +561,7 @@ function renderUrgentTable(data) {
     <tr>
       <td class="text-mono">${esc(r.materialCode)}</td>
       <td>${esc(r.description)}</td>
-      <td>${esc(r.materialType)}</td>
+      <td>${typeBadge(r.materialType)}</td>
       <td class="num">${fmt(r.branchSOH)}</td>
       <td class="num">${fmt(r.centralSOH)}</td>
       <td class="num">${fmt(r.branchForecast)}</td>
@@ -587,10 +587,10 @@ function renderOverstockTable(data) {
     <tr>
       <td class="text-mono">${esc(r.materialCode)}</td>
       <td>${esc(r.description)}</td>
-      <td>${esc(r.materialType)}</td>
+      <td>${typeBadge(r.materialType)}</td>
       <td class="num">${fmt(r.centralSOH)}</td>
       <td class="num">${fmt(r.amc)}</td>
-      <td class="num"><strong>${r.mosCentral !== null ? r.mosCentral.toFixed(1) : '—'}</strong></td>
+      <td class="num"><strong>${mosCell(r.mosCentral)}</strong></td>
       <td class="num">${fmt(r.branchForecast)}</td>
       <td><span class="status-chip overstock-yes">OVERSTOCK</span></td>
     </tr>
@@ -636,7 +636,55 @@ function applyFilters() {
 
 function filterTable() { applyFilters(); }
 
-function sortTable(col) {
+function clearFilters() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('filterStatus').value = '';
+  document.getElementById('filterType').value = '';
+  document.getElementById('filterOverstock').value = '';
+  applyFilters();
+}
+
+function applyFilters() {
+  let data = [...state.allocationData];
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const fStatus = document.getElementById('filterStatus').value;
+  const fType = document.getElementById('filterType').value;
+  const fOverstock = document.getElementById('filterOverstock').value;
+
+  if (search) {
+    data = data.filter(r =>
+      r.materialCode.toLowerCase().includes(search) ||
+      r.description.toLowerCase().includes(search)
+    );
+  }
+  if (fStatus) data = data.filter(r => r.allocationStatus === fStatus);
+  if (fType) data = data.filter(r => String(r.materialType).toUpperCase() === fType.toUpperCase());
+  if (fOverstock) data = data.filter(r => r.overstockFlag === fOverstock);
+
+  // Highlight active selects
+  ['filterStatus','filterType','filterOverstock'].forEach(id => {
+    const el = document.getElementById(id);
+    el.classList.toggle('filter-active', !!el.value);
+  });
+
+  // Show/hide clear button
+  const hasFilter = search || fStatus || fType || fOverstock;
+  const clearBtn = document.getElementById('clearFiltersBtn');
+  if (clearBtn) clearBtn.style.display = hasFilter ? '' : 'none';
+
+  if (state.sortCol) {
+    data.sort((a, b) => {
+      const va = a[state.sortCol] ?? '';
+      const vb = b[state.sortCol] ?? '';
+      if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * state.sortDir;
+      return String(va).localeCompare(String(vb)) * state.sortDir;
+    });
+  }
+
+  state.filteredData = data;
+  document.getElementById('filterCount').textContent = `${data.length} item${data.length !== 1 ? 's' : ''}`;
+  drawAllocationTbody(data);
+}
   if (state.sortCol === col) {
     state.sortDir *= -1;
   } else {
@@ -656,25 +704,25 @@ function drawAllocationTbody(data) {
     <tr>
       <td class="text-mono mat-code">${esc(r.materialCode)}</td>
       <td>${esc(r.description)}</td>
-      <td>${esc(r.materialType)}</td>
+      <td>${typeBadge(r.materialType)}</td>
       <td class="num">${fmt(r.branchSOH)}</td>
       <td class="num">${fmt(r.centralSOH)}</td>
       <td class="num">${fmt(r.nationalSOH)}</td>
       <td class="num">${fmt(r.amc)}</td>
-      <td class="num">${r.mosCentral !== null ? r.mosCentral.toFixed(1) : '—'}</td>
+      <td class="num">${mosCell(r.mosCentral)}</td>
       <td class="num">${fmt(r.branchForecast)}</td>
       <td class="num">${fmt(r.deliveredQty)}</td>
-      <td class="num">${r.fillRateQtyPct !== null ? (r.fillRateQtyPct * 100).toFixed(1) + '%' : '—'}</td>
+      <td class="num">${fillRateCell(r.fillRateQtyPct)}</td>
       <td class="num">${fmt(r.branchForecastValue)}</td>
       <td class="num">${fmt(r.branchDeliveredValue)}</td>
-      <td class="num">${r.fillRateValuePct !== null ? (r.fillRateValuePct * 100).toFixed(1) + '%' : '—'}</td>
+      <td class="num">${fillRateCell(r.fillRateValuePct)}</td>
       <td class="num ${r.branchRemainingNeed > 0 ? 'text-danger' : ''}">${fmt(r.branchRemainingNeed)}</td>
       <td class="num">${fmt(r.nationalRemainingNeed)}</td>
       <td class="num"><strong>${fmt(r.recommendedAllocation)}</strong></td>
-      <td class="num">${r.allocationPct !== null ? (r.allocationPct * 100).toFixed(1) + '%' : '—'}</td>
+      <td class="num">${allocPctCell(r.allocationPct)}</td>
       <td>${statusChip(r.allocationStatus)}</td>
       <td>${r.overstockFlag === 'OVERSTOCK' ? '<span class="status-chip overstock-yes">OVERSTOCK</span>' : '<span class="overstock-no">OK</span>'}</td>
-      <td style="max-width:220px;font-size:.72rem;color:var(--text-muted)">${esc(r.comments)}</td>
+      <td style="max-width:220px;font-size:.72rem;color:var(--text-3)">${esc(r.comments)}</td>
       <td class="num">${fmt(r.suggestedRedistribution)}</td>
     </tr>
   `).join('');
@@ -999,6 +1047,41 @@ function statusChip(status) {
   };
   const cls = map[status] || '';
   return cls ? `<span class="${cls}">${esc(status)}</span>` : esc(status);
+}
+
+function typeBadge(type) {
+  const t = String(type || '').toUpperCase();
+  const clsMap = { ZME: 'type-zme', ZMS: 'type-zms', ZLC: 'type-zlc', ZMD: 'type-zmd' };
+  const cls = clsMap[t] || 'type-other';
+  return `<span class="type-badge ${cls}">${esc(t) || '—'}</span>`;
+}
+
+function fillRateCell(pct) {
+  if (pct === null) return '—';
+  const val = (pct * 100).toFixed(1) + '%';
+  if (pct >= 0.9) return `<span class="fill-high">${val}</span>`;
+  if (pct >= 0.5) return `<span class="fill-mid">${val}</span>`;
+  return `<span class="fill-low">${val}</span>`;
+}
+
+function mosCell(mos) {
+  if (mos === null) return '—';
+  const v = mos.toFixed(1);
+  if (mos === 0) return `<span class="mos-critical">${v}</span>`;
+  if (mos < 3) return `<span class="mos-warn">${v}</span>`;
+  if (mos > 9) return `<span class="mos-over">${v}</span>`;
+  return `<span class="mos-ok">${v}</span>`;
+}
+
+function allocPctCell(pct) {
+  if (pct === null) return '—';
+  const val = (pct * 100).toFixed(1);
+  const fillCls = pct >= 0.9 ? 'full' : pct >= 0.5 ? 'mid' : 'low';
+  const w = Math.min(100, Math.round(pct * 100));
+  return `<div class="alloc-bar-wrap">
+    <div class="alloc-bar"><div class="alloc-bar-fill ${fillCls}" style="width:${w}%"></div></div>
+    <span>${val}%</span>
+  </div>`;
 }
 
 function showToast(msg, type = '') {
