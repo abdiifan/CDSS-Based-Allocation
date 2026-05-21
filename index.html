@@ -1194,6 +1194,65 @@
       0%, 100% { box-shadow: 0 0 0 0 rgba(47,158,91,0.5); }
       50%       { box-shadow: 0 0 0 4px rgba(47,158,91,0); }
     }
+
+    /* ═══════════════════════════════════════
+       DASHBOARD TYPE FILTER
+    ═══════════════════════════════════════ */
+    .dash-type-filter {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      padding: 12px 18px;
+      box-shadow: var(--s-sm);
+    }
+    .dash-filter-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-3);
+      margin-right: 4px;
+    }
+    .dash-type-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 30px;
+      padding: 0 14px;
+      border-radius: 100px;
+      border: 1.5px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text-2);
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s;
+    }
+    .dash-type-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-l);
+    }
+    .dash-type-btn.active {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #fff;
+    }
+    .dash-type-btn.active .type-badge {
+      background: rgba(255,255,255,0.25);
+      color: #fff;
+    }
+    .dash-filter-count {
+      margin-left: auto;
+      font-size: 0.75rem;
+      color: var(--text-3);
+      font-weight: 500;
+    }
   </style>
 </head>
 <body>
@@ -1267,6 +1326,18 @@
 
     <!-- TAB: Dashboard -->
     <section class="tab-content active" id="tab-dashboard">
+
+      <!-- Dashboard Type Filter -->
+      <div class="dash-type-filter" id="dashTypeFilter">
+        <span class="dash-filter-label">Filter by Type:</span>
+        <button class="dash-type-btn active" data-type="">All Types</button>
+        <button class="dash-type-btn" data-type="ZME"><span class="type-badge type-zme">ZME</span></button>
+        <button class="dash-type-btn" data-type="ZMS"><span class="type-badge type-zms">ZMS</span></button>
+        <button class="dash-type-btn" data-type="ZLC"><span class="type-badge type-zlc">ZLC</span></button>
+        <button class="dash-type-btn" data-type="ZMD"><span class="type-badge type-zmd">ZMD</span></button>
+        <span class="dash-filter-count" id="dashFilterCount"></span>
+      </div>
+
       <div class="kpi-grid" id="kpiGrid">
         <div class="kpi-card">
           <div class="kpi-label">Total Items Tracked</div>
