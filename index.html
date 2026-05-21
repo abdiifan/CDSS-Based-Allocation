@@ -1074,6 +1074,126 @@
       .tab-content { padding: 18px; }
       .top-header { padding: 0 18px; }
     }
+
+    /* ═══════════════════════════════════════
+       STATUS CHIPS — richer
+    ═══════════════════════════════════════ */
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      height: 20px;
+      padding: 0 9px;
+      border-radius: 100px;
+      font-size: 0.64rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .status-chip::before {
+      content: '';
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .status-critical  { background: var(--danger-bg);  color: var(--danger-2);  border: 1px solid var(--danger-l); }
+    .status-critical::before  { background: var(--danger-2); }
+    .status-rationed  { background: var(--warn-bg);    color: var(--warn-2);    border: 1px solid var(--warn-l); }
+    .status-rationed::before  { background: var(--warn-2); }
+    .status-partial   { background: #fff7eb;            color: #c25e00;          border: 1px solid #fddcb0; }
+    .status-partial::before   { background: #c25e00; }
+    [data-theme="dark"] .status-partial { background: #1f1200; color: #f6a623; border-color: #4a2c00; }
+    .status-full      { background: var(--success-bg); color: var(--success-2); border: 1px solid var(--success-l); }
+    .status-full::before      { background: var(--success-2); }
+    .status-noneed    { background: var(--surface-3);   color: var(--text-3);    border: 1px solid var(--border); }
+    .status-noneed::before    { background: var(--text-4); }
+
+    .overstock-yes { background: var(--warn-bg); color: var(--warn-2); border: 1px solid var(--warn-l); }
+    .overstock-no  { font-size: 0.75rem; color: var(--text-3); }
+
+    /* ═══════════════════════════════════════
+       TYPE BADGES
+    ═══════════════════════════════════════ */
+    .type-badge {
+      display: inline-flex;
+      align-items: center;
+      height: 19px;
+      padding: 0 8px;
+      border-radius: 5px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      font-family: var(--f-mono);
+    }
+    .type-zme { background: #dbeafe; color: #1d4ed8; }
+    [data-theme="dark"] .type-zme { background: #1e3a5f; color: #60a5fa; }
+    .type-zms { background: #f3e8ff; color: #7c3aed; }
+    [data-theme="dark"] .type-zms { background: #2d1a4a; color: #c084fc; }
+    .type-zlc { background: #d1fae5; color: #065f46; }
+    [data-theme="dark"] .type-zlc { background: #0a2e1c; color: #34d399; }
+    .type-zmd { background: #fef3c7; color: #92400e; }
+    [data-theme="dark"] .type-zmd { background: #2c1a00; color: #fbbf24; }
+    .type-other { background: var(--surface-3); color: var(--text-3); }
+
+    /* ═══════════════════════════════════════
+       FILL-RATE COLOR CODING
+    ═══════════════════════════════════════ */
+    .fill-high   { color: var(--success-2); font-weight: 600; }
+    .fill-mid    { color: var(--warn-2);    font-weight: 600; }
+    .fill-low    { color: var(--danger-2);  font-weight: 600; }
+
+    /* ═══════════════════════════════════════
+       FILTER BAR — active filter highlight
+    ═══════════════════════════════════════ */
+    .filters-bar select.filter-active {
+      border-color: var(--accent);
+      background-color: var(--accent-l);
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    /* ═══════════════════════════════════════
+       ALLOCATION TABLE — MOS color banding
+    ═══════════════════════════════════════ */
+    .mos-critical { color: var(--danger-2); font-weight: 700; }
+    .mos-warn     { color: var(--warn-2);   font-weight: 600; }
+    .mos-ok       { color: var(--success-2);}
+    .mos-over     { color: var(--info);     font-weight: 600; }
+
+    /* Allocation % bar */
+    .alloc-bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+    .alloc-bar {
+      flex: 1;
+      max-width: 48px;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--border);
+      overflow: hidden;
+    }
+    .alloc-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.4s ease;
+    }
+    .alloc-bar-fill.full   { background: var(--success-2); }
+    .alloc-bar-fill.mid    { background: var(--warn-2); }
+    .alloc-bar-fill.low    { background: var(--danger-2); }
+
+    /* Dot-loaded pulse */
+    .dot-loaded {
+      background: var(--success-2);
+      animation: pulse-dot 2s infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(47,158,91,0.5); }
+      50%       { box-shadow: 0 0 0 4px rgba(47,158,91,0); }
+    }
   </style>
 </head>
 <body>
@@ -1368,6 +1488,7 @@
           <option value="OVERSTOCK">OVERSTOCK</option>
           <option value="OK">OK</option>
         </select>
+        <button class="btn btn-sm btn-outline" id="clearFiltersBtn" onclick="clearFilters()" title="Clear all filters" style="display:none;">✕ Clear</button>
         <span class="filter-count" id="filterCount">0 items</span>
       </div>
 
@@ -1464,7 +1585,7 @@
             <table class="ref-table">
               <tr><td>Material Code</td><td>Col 1 — Primary lookup key</td></tr>
               <tr><td>Description</td><td>Col 2 — From Branch CDSS</td></tr>
-              <tr><td>Material Type</td><td>Col 3 — Branch CDSS (ZME/ZMS)</td></tr>
+              <tr><td>Material Type</td><td>Col 3 — Branch CDSS (ZME/ZMS/ZLC/ZMD)</td></tr>
               <tr><td>Branch SOH</td><td>Col 4 — Branch CDSS</td></tr>
               <tr><td>Central SOH</td><td>Col 4 — Central Warehouse</td></tr>
               <tr><td>National SOH</td><td>Col 4 — National Branches</td></tr>
