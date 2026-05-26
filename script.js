@@ -184,14 +184,6 @@ function loadTableData(rows, target, sourceName) {
   if (!rows || rows.length < 2) {
     showToast(`No data found in ${sourceName}`, 'error'); return;
   }
-  // Normalize: skip header row, convert to objects
-  const headers = rows[0].map(h => String(h).trim().toLowerCase());
-  const data = rows.slice(1).map(row => {
-    const obj = {};
-    headers.forEach((h, i) => { obj[h] = row[i] !== undefined ? row[i] : ''; });
-    return row;
-  }).filter(row => row.some(v => v !== '' && v !== null && v !== undefined));
-
   // Convert to indexed arrays for fast lookup
   const normalized = rows.slice(1)
     .filter(row => row.length >= 2 && row[0] !== '' && row[0] !== null)
@@ -226,10 +218,23 @@ function renderDataPreview(target, data) {
 // ─── Lookup Helpers ──────────────────────────────────────────
 function buildIndex(data) {
   const idx = {};
+  const duplicates = [];
   data.forEach(row => {
     const key = String(row[COLS.MATERIAL_CODE]).trim().toUpperCase();
-    if (key) idx[key] = row;
+    if (!key) return;
+    if (idx[key]) {
+      // Already seen — record duplicate, do NOT overwrite first occurrence
+      if (!duplicates.includes(key)) duplicates.push(key);
+    } else {
+      // First time seeing this code — keep it
+      idx[key] = row;
+    }
   });
+  if (duplicates.length > 0) {
+    const preview = duplicates.slice(0, 5).join(', ');
+    const extra = duplicates.length > 5 ? ` +${duplicates.length - 5} more` : '';
+    showToast(`⚠️ Duplicate codes found (kept first): ${preview}${extra}`, 'warn');
+  }
   return idx;
 }
 
@@ -885,6 +890,8 @@ function loadSampleData() {
   state.materialCodes = state.branch.map(r => String(r[0]).trim().toUpperCase());
   populateMaterialTable(state.materialCodes);
   showToast('Sample data loaded!', 'success');
+  saveState();
+  runAllCalculations();
 }
 
 function clearAllData() {
@@ -899,7 +906,7 @@ function clearAllData() {
     document.getElementById(`preview-${t}`).classList.remove('visible');
   });
   document.getElementById('allocationTbody').innerHTML = `
-    <tr><td colspan="18" class="empty-state">
+    <tr><td colspan="22" class="empty-state">
       <div class="empty-icon">📋</div>
       <p>No allocation data yet.</p>
       <p>Go to <strong>Data Input</strong> to load your source data.</p>
@@ -1007,7 +1014,9 @@ function saveState() {
     localStorage.setItem('pharma-central', JSON.stringify(state.central));
     localStorage.setItem('pharma-national', JSON.stringify(state.national));
     localStorage.setItem('pharma-materials', JSON.stringify(state.materialCodes));
-  } catch(e) { /* storage full */ }
+  } catch(e) {
+    showToast('⚠️ Data too large to auto-save. Export your report before closing this tab.', 'warn');
+  }
 }
 
 function loadSavedState() {
